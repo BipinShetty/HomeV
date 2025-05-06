@@ -1,4 +1,3 @@
-Here's your updated and copy-paste–friendly `README.md` rewritten with best practices, accurate CLI usage, clear documentation, and aligned with your actual program output and flow:
 
 ---
 
