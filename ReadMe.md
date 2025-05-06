@@ -99,16 +99,4 @@ Saved C000117E-88C4-41E4-ABC6-C476419D1AFF (20 bytes, type: Unknown)
 
 ---
 
-## 🛠 Extend This Project
 
-You can extend this parser to:
-
-* Identify additional magic numbers (e.g., PDF, DOCX)
-* Track nested document formats (e.g., XML inside ZIP)
-* Reconstruct folder structures from metadata (if applicable)
-
----
-
-Made with 🧠 & ❤️ to reverse-engineer unknown formats and make sense of binary chaos.
-
-Would you like me to export this as a ready-to-paste `README.md` file?
