@@ -14,22 +14,22 @@ PRIMARY_TAGS = [
 ]
 
 def extract_all_tags(data: bytes) -> List[str]:
-    """Extract all unique uppercase tags from the binary .env content."""
+    # Extract all unique uppercase tags from the binary .env content
     tag_pattern = re.compile(rb'([A-Z0-9_]{2,32}/)')
     return sorted(set(m.group().decode('utf-8') for m in tag_pattern.finditer(data)))
 
 def find_tag_positions(data: bytes) -> List[Tuple[int, str]]:
-    """Find positions of known tags in the binary stream."""
+    #Find positions of known tags in the binary stream.
     tag_pattern = re.compile(b'(' + b'|'.join(PRIMARY_TAGS) + b')')
     return [(m.start(), m.group().decode('utf-8')) for m in tag_pattern.finditer(data)]
 
 def clean_filename(name: str) -> str:
-    """Sanitize filenames to be filesystem safe."""
+    # Sanitize filenames to be filesystem safe.
     name = name.replace('\r', '').replace('\n', '')
     return re.sub(r'[\\/:"*?<>|]+', '_', name.strip())
 
 def detect_file_type(blob: bytes, ext_or_type: str = "") -> Tuple[str, str]:
-    """Detect file type using known extensions or content-based magic numbers."""
+    # Extract file type based on extension or blob content.
     ext_or_type = ext_or_type.strip().lower()
 
     if ext_or_type in {'jpg', '.jpg', 'jpeg'}:
@@ -45,6 +45,7 @@ def detect_file_type(blob: bytes, ext_or_type: str = "") -> Tuple[str, str]:
     if ext_or_type in {'txt', '.txt', 'text'}:
         return '.txt', 'TEXT'
 
+    # I got this logic from git-hub
     if blob.startswith(b'\xFF\xD8\xFF'):
         return '.jpg', 'JPEG'
     if blob.startswith(b'\x89PNG'):
@@ -61,10 +62,11 @@ def detect_file_type(blob: bytes, ext_or_type: str = "") -> Tuple[str, str]:
     return '.bin', 'Unknown'
 
 def save_file(meta: Dict[str, str], blob: bytes, all_files: List[Dict], output_dir: str) -> None:
-    """Write extracted binary content to disk and append metadata."""
+    #Write extracted binary content to disk and append metadata.
     ext = meta.get('EXT', '').strip().lower()
     file_type = meta.get('TYPE', '').strip()
 
+    # If file extension is present, get file type or extract via file content
     if not ext and not file_type:
         detected_ext, detected_type = detect_file_type(blob)
         ext = ext or detected_ext.lstrip('.')
@@ -90,10 +92,10 @@ def save_file(meta: Dict[str, str], blob: bytes, all_files: List[Dict], output_d
         'sha1': sha1
     })
 
-    print(f"\U0001F4BE Saved {filename} ({len(blob)} bytes, type: {file_type or 'Unknown'})")
+    print(f" Saved {filename} ({len(blob)} bytes, type: {file_type or 'Unknown'})")
 
 def parse_env_file(file_path: str, output_dir: str = "final_output", show_summary: bool = False) -> None:
-    """Parse a proprietary HomeVision .env archive and extract embedded files."""
+    #Parse a proprietary HomeVision .env archive and extract embedded files
     with open(file_path, 'rb') as f:
         data = f.read()
 
@@ -134,10 +136,10 @@ def parse_env_file(file_path: str, output_dir: str = "final_output", show_summar
     with open(os.path.join(output_dir, 'metadata.json'), 'w') as mf:
         json.dump(files, mf, indent=2)
 
-    print(f"\n✅ Parsed {len(files)} files. Metadata saved to '{output_dir}/metadata.json'")
+    print(f"\n Parsed {len(files)} files. Metadata saved to '{output_dir}/metadata.json'")
 
     if show_summary:
-        print("\n📊 Summary:")
+        print("\n Summary:")
         print(tabulate(
             [[f['filename'], f['type'], f['size_bytes']] for f in files],
             headers=["Filename", "Type", "Size (bytes)"],
@@ -145,7 +147,7 @@ def parse_env_file(file_path: str, output_dir: str = "final_output", show_summar
         ))
 
 def main():
-    """CLI entrypoint for .env archive parsing"""
+    # CLI entrypoint for .env archive parsing
     parser = argparse.ArgumentParser(description="Parse proprietary HomeVision .env archive")
     parser.add_argument('--input', '-i', required=True, nargs='+', help="One or more .env files")
     parser.add_argument('--output', '-o', default='final_output', help="Output directory")
