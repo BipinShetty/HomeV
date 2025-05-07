@@ -36,7 +36,7 @@ The tool follows this process:
 ### Example
 
 ```bash
-python main.py --input sample.env test1.env --output final_output --summary
+python main.py --input test_files/sample.env test_files/test1.env test_files/test2.env --output final_output --summary
 ```
 
 ### Arguments
