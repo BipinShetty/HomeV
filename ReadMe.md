@@ -1,4 +1,3 @@
-
 ---
 
 # HomeVision `sample.env` File Parser
@@ -61,7 +60,7 @@ python main.py --input test_files/sample.env test_files/test1.env test_files/tes
 ##  Example Output
 
 ### Console Output
-
+Home vision Sample.env file
 ```text
  Saved C000117E-88C4-41E4-ABC6-C476419D1AFF (20 bytes, type: Unknown)
  Saved homer-simpson.jpg (40 bytes, type: JPEG)
@@ -75,7 +74,7 @@ python main.py --input test_files/sample.env test_files/test1.env test_files/tes
  Parsed 8 files. Metadata saved to 'final_output/metadata.json'
 ```
 
-### Summary Table
+### Summary Table for Home vision Sample.env file
 
 | Filename                             | Type    | Size (bytes) |
 | ------------------------------------ | ------- | ------------ |
@@ -90,7 +89,7 @@ python main.py --input test_files/sample.env test_files/test1.env test_files/tes
 
 ---
 
-## Developer Notes
+## 👩‍💻 Developer Notes
 
 *  Python 3.7+
 * No external dependencies required, except for `tabulate` (install via `pip install tabulate`)
@@ -99,4 +98,17 @@ python main.py --input test_files/sample.env test_files/test1.env test_files/tes
 
 ---
 
+## ✅ Unit Tests
 
+Basic unit tests are included to validate:
+
+* Tag extraction and tag position logic  
+* Filename sanitization for filesystem safety  
+* File type detection based on blob content and extensions  
+
+To run the tests:
+
+```bash
+pytest test_env_parser.py
+```
+---

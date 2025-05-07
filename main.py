@@ -14,7 +14,7 @@ PRIMARY_TAGS = [
 ]
 
 def extract_all_tags(data: bytes) -> List[str]:
-    # Extract all unique uppercase tags from the binary .env content
+    # Extract all unique uppercase tags from the binary .env content, this is for reference and listing all tags in file.
     tag_pattern = re.compile(rb'([A-Z0-9_]{2,32}/)')
     return sorted(set(m.group().decode('utf-8') for m in tag_pattern.finditer(data)))
 
@@ -95,7 +95,8 @@ def save_file(meta: Dict[str, str], blob: bytes, all_files: List[Dict], output_d
     print(f" Saved {filename} ({len(blob)} bytes, type: {file_type or 'Unknown'})")
 
 def parse_env_file(file_path: str, output_dir: str = "final_output", show_summary: bool = False) -> None:
-    #Parse a proprietary HomeVision .env archive and extract embedded files
+
+    #Parse a proprietary HomeVision sample.env archive and extract embedded files
     with open(file_path, 'rb') as f:
         data = f.read()
 
@@ -103,36 +104,47 @@ def parse_env_file(file_path: str, output_dir: str = "final_output", show_summar
     with open(os.path.join(output_dir, 'all_tags.txt'), 'w') as tf:
         tf.write('\n'.join(extract_all_tags(data)))
 
+    # Find primary tag positions
     tag_positions = find_tag_positions(data)
+    # Tag the end of file
     tag_positions.append((len(data), 'EOF'))
 
     files = []
     current_meta = {}
     current_blob = b''
 
-    # Iterate through each tag block and extract relevant metadata or binary content
+    # Iterate through each pair of tag positions to extract structured sections
     for (start, tag), (next_start, _) in zip(tag_positions, tag_positions[1:]):
+        # Slice the binary data between the current tag and the next
         raw = data[start + len(tag):next_start]
+
+        # Extract the tag's value (up to newline or carriage return, max 1000 bytes)
         value = raw.split(b'\r')[0].split(b'\n')[0][:1000].strip()
 
         if tag == 'GUID/':
-            # Save the previous file before starting a new one
+            # If we're starting a new file and there's a previous one in progress, save it
             if current_meta and current_blob:
                 save_file(current_meta, current_blob, files, output_dir)
-                current_blob = b''
+                current_blob = b''  # Reset blob for next file
+            # Begin new metadata context with the current GUID
             current_meta = {'GUID': value.decode('utf-8', errors='replace')}
 
         elif tag in {'FILENAME/', 'EXT/', 'TYPE/', 'SHA1/', 'DOCTYPE/'}:
+            # Populate metadata fields from tag-value pairs (strip trailing slash from tag name)
             current_meta[tag.strip('/')] = value.decode('utf-8', errors='replace')
 
         elif tag in {'DOCU/', '_SIG/', 'IMAGE/', 'OADI/'}:
+            # Accumulate binary content for the file
             current_blob += raw
+            # If blob exists before metadata, assign a placeholder GUID
             if not current_meta:
                 current_meta = {'GUID': f'unlabeled_{len(files)}'}
 
+    # After looping, save the last file if one was being built
     if current_meta and current_blob:
         save_file(current_meta, current_blob, files, output_dir)
 
+    # Save the file meta-data in a json.
     with open(os.path.join(output_dir, 'metadata.json'), 'w') as mf:
         json.dump(files, mf, indent=2)
 
@@ -154,6 +166,7 @@ def main():
     parser.add_argument('--summary', action='store_true', help="Show summary table")
     args = parser.parse_args()
 
+    # Test with few different .env files
     for input_file in args.input:
         parse_env_file(input_file, args.output, args.summary)
 
