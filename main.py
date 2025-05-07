@@ -124,6 +124,10 @@ def parse_env_file(file_path: str, output_dir: str = "final_output", show_summar
     with open(file_path, 'rb') as f:
         data = f.read()
 
+    # Save all the tags extracted in all_tags.txt for analysis, later I extracted the primary set of tags as mentioned above. e.g
+    # PRIMARY_TAGS = [
+    #     b'GUID/', b'FILENAME/', b'EXT/', b'TYPE/', b'SHA1/',
+    #     b'DOCU/', b'_SIG/', b'DOCTYPE/'........ ]
     os.makedirs(output_dir, exist_ok=True)
     with open(os.path.join(output_dir, 'all_tags.txt'), 'w') as tf:
         tf.write('\n'.join(extract_all_tags(data)))
