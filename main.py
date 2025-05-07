@@ -3,8 +3,12 @@ import json
 import hashlib
 import re
 import argparse
+import logging
 from typing import List, Tuple, Dict
 from tabulate import tabulate
+
+# Setup logger
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 # List of recognized tags in the proprietary .env archive format
 PRIMARY_TAGS = [
@@ -83,6 +87,7 @@ def save_file(meta: Dict[str, str], blob: bytes, all_files: List[Dict], output_d
     with open(full_path, 'wb') as f:
         f.write(blob)
 
+    # Save the hash of file in meta-data json
     sha1 = hashlib.sha1(blob).hexdigest()
     all_files.append({
         'filename': filename,
@@ -92,7 +97,26 @@ def save_file(meta: Dict[str, str], blob: bytes, all_files: List[Dict], output_d
         'sha1': sha1
     })
 
-    print(f" Saved {filename} ({len(blob)} bytes, type: {file_type or 'Unknown'})")
+    logging.info(f" Saved {filename} ({len(blob)} bytes, type: {file_type or 'Unknown'})")
+
+# Refactored helper: handles metadata tags like GUID/, FILENAME/, etc.
+def process_metadata_tag(tag: str, value: bytes, current_meta: Dict[str, str], files: List[Dict], output_dir: str, current_blob: bytes) -> Tuple[Dict[str, str], bytes]:
+    decoded = value.decode('utf-8', errors='replace')
+    if tag == 'GUID/':
+        if current_meta and current_blob:
+            save_file(current_meta, current_blob, files, output_dir)
+            current_blob = b''
+        current_meta = {'GUID': decoded}
+    else:
+        current_meta[tag.strip('/')] = decoded
+    return current_meta, current_blob
+
+# Refactored helper: handles binary content tags like DOCU/, IMAGE/
+def accumulate_blob(tag: str, raw: bytes, current_blob: bytes, current_meta: Dict[str, str], files: List[Dict]) -> Tuple[bytes, Dict[str, str]]:
+    current_blob += raw
+    if not current_meta:
+        current_meta = {'GUID': f'unlabeled_{len(files)}'}
+    return current_blob, current_meta
 
 def parse_env_file(file_path: str, output_dir: str = "final_output", show_summary: bool = False) -> None:
 
@@ -115,44 +139,25 @@ def parse_env_file(file_path: str, output_dir: str = "final_output", show_summar
 
     # Iterate through each pair of tag positions to extract structured sections
     for (start, tag), (next_start, _) in zip(tag_positions, tag_positions[1:]):
-        # Slice the binary data between the current tag and the next
         raw = data[start + len(tag):next_start]
-
-        # Extract the tag's value (up to newline or carriage return, max 1000 bytes)
         value = raw.split(b'\r')[0].split(b'\n')[0][:1000].strip()
 
-        if tag == 'GUID/':
-            # If we're starting a new file and there's a previous one in progress, save it
-            if current_meta and current_blob:
-                save_file(current_meta, current_blob, files, output_dir)
-                current_blob = b''  # Reset blob for next file
-            # Begin new metadata context with the current GUID
-            current_meta = {'GUID': value.decode('utf-8', errors='replace')}
-
-        elif tag in {'FILENAME/', 'EXT/', 'TYPE/', 'SHA1/', 'DOCTYPE/'}:
-            # Populate metadata fields from tag-value pairs (strip trailing slash from tag name)
-            current_meta[tag.strip('/')] = value.decode('utf-8', errors='replace')
-
+        if tag in {'GUID/', 'FILENAME/', 'EXT/', 'TYPE/', 'SHA1/', 'DOCTYPE/'}:
+            current_meta, current_blob = process_metadata_tag(tag, value, current_meta, files, output_dir, current_blob)
         elif tag in {'DOCU/', '_SIG/', 'IMAGE/', 'OADI/'}:
-            # Accumulate binary content for the file
-            current_blob += raw
-            # If blob exists before metadata, assign a placeholder GUID
-            if not current_meta:
-                current_meta = {'GUID': f'unlabeled_{len(files)}'}
+            current_blob, current_meta = accumulate_blob(tag, raw, current_blob, current_meta, files)
 
-    # After looping, save the last file if one was being built
     if current_meta and current_blob:
         save_file(current_meta, current_blob, files, output_dir)
 
-    # Save the file meta-data in a json.
     with open(os.path.join(output_dir, 'metadata.json'), 'w') as mf:
         json.dump(files, mf, indent=2)
 
-    print(f"\n Parsed {len(files)} files. Metadata saved to '{output_dir}/metadata.json'")
+    logging.info(f"\n Parsed {len(files)} files. Metadata saved to '{output_dir}/metadata.json'")
 
     if show_summary:
-        print("\n Summary:")
-        print(tabulate(
+        logging.info("\n Summary:")
+        logging.info(tabulate(
             [[f['filename'], f['type'], f['size_bytes']] for f in files],
             headers=["Filename", "Type", "Size (bytes)"],
             tablefmt="github"
